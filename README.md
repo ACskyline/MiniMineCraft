@@ -1,7 +1,7 @@
 # MiniMineCraft
 This project is the final assignment of CIS-560 Computer Graphics. The project is based on OpenGL and Qt. Some features like procedural terrain, collision detection, gravity and ray-casting were implemented.
 ## General Movement and Procedural Terrain
-The part shows some general movements like walking and jumping. Notice when the character move off a stair, it automatically falls. Also it shows how the procedural terrain are generated. When the character approaches the border of the current "chunk", new "chunk" will be generated.
+This part shows some general movements like walking and jumping. Notice when the character move off a stair, it automatically falls. Also it shows how the procedural terrain are generated. When the character approaches the border of the current "chunk", new "chunk" will be generated.
 ![general_movement_and_procedural_terrain](./img/mini_mc_move.gif)
 ## First Person View
 In first person view, the movement is similar to a general fps game, where "WASD" controls movement, "space" controls jumping and mouse controls viewing direction(and add/remove blocks). 
@@ -11,5 +11,5 @@ The collision detection in this project does not only prevent the character move
 ![collision_detection](./img/mini_mc_slide.gif)
 ## Add and Remove Blocks
 When adding/removing blocks from the terrain, a ray will be cast from the (first-person-view)camera towards the viewing direction. The ray will be tested against all boxes within a 5x5x5 boundary around the character. In the case of adding blocks, the farthest empty box will be used and in the case of removing blocks, the nearest non-empty box will be used.
-![add_blocks](./img/mini_mc_add.jpg)
-![remove_blocks](./img/mini_mc_remove.jpg)
+![add_blocks](./img/mini_mc_add.gif)
+![remove_blocks](./img/mini_mc_remove.gif)
