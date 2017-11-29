@@ -1,5 +1,5 @@
 # MiniMineCraft
-This project is the final assignment of CIS-560 Computer Graphics. The project is based on OpenGL and Qt. Some features like procedural terrain, collision detection, gravity and ray-casting were implemented.
+This project is the final assignment of CIS-560 Computer Graphics(_it is still under progress_). The project is based on OpenGL and Qt. Some features like procedural terrain, collision detection, gravity and ray-casting were implemented.
 ## General Movement and Procedural Terrain
 This part shows some general movements like walking and jumping. Notice when the character move off a stair, it automatically falls. Also it shows how the procedural terrain are generated. When the character approaches the border of the current "chunk", new "chunk" will be generated.
 ![general_movement_and_procedural_terrain](./img/mini_mc_move.gif)
