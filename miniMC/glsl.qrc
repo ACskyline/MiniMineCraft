@@ -4,5 +4,24 @@
         <file>glsl/lambert.vert.glsl</file>
         <file>glsl/flat.frag.glsl</file>
         <file>glsl/flat.vert.glsl</file>
+        <file>texture/all.png</file>
+        <file>glsl/mylambert.frag.glsl</file>
+        <file>glsl/mylambert.vert.glsl</file>
+        <file>glsl/lambertwater.frag.glsl</file>
+        <file>glsl/lambertwater.vert.glsl</file>
+        <file>glsl/screen.frag.glsl</file>
+        <file>glsl/screen.vert.glsl</file>
+        <file>glsl/post.frag.glsl</file>
+        <file>glsl/post.vert.glsl</file>
+        <file>glsl/shadow.frag.glsl</file>
+        <file>glsl/shadow.vert.glsl</file>
+        <file>texture/back.png</file>
+        <file>texture/down.png</file>
+        <file>texture/front.png</file>
+        <file>texture/left.png</file>
+        <file>texture/right.png</file>
+        <file>texture/up.png</file>
+        <file>glsl/cube.frag.glsl</file>
+        <file>glsl/cube.vert.glsl</file>
     </qresource>
 </RCC>

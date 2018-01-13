@@ -4,9 +4,9 @@
 #include <string>
 #include <cmath>
 
-enum BlockType : unsigned char
+enum BlockType : int
 {
-    EMPTY, GRASS, DIRT, STONE
+    EMPTY, GRASS, DIRT, STONE, WOOD, LEAF, BEDROCK, LAVA, WATER, ICE, BLOCKTYPEMAX
 };
 
 static const float PI = 3.14159265358979323846f;

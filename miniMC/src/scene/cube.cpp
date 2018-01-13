@@ -5,6 +5,8 @@
 static const int CUB_IDX_COUNT = 36;
 static const int CUB_VERT_COUNT = 24;
 
+#define SIZE 1
+
 glm::vec4 GetCubeNormal(const glm::vec4& P)
 {
     int idx = 0;
@@ -27,63 +29,63 @@ void createCubeVertexPositions(glm::vec4 (&cub_vert_pos)[CUB_VERT_COUNT])
     int idx = 0;
     //Front face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
 
     //Right face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
 
     //Left face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
 
     //Back face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
 
     //Top face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, 0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, 0.5f*SIZE, -0.5f*SIZE, 1.0f);
 
     //Bottom face
     //UR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
     //LR
-    cub_vert_pos[idx++] = glm::vec4(0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //LL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, -0.5f*SIZE, 1.0f);
     //UL
-    cub_vert_pos[idx++] = glm::vec4(-0.5f, -0.5f, 0.5f, 1.0f);
+    cub_vert_pos[idx++] = glm::vec4(-0.5f*SIZE, -0.5f*SIZE, 0.5f*SIZE, 1.0f);
 }
 
 
@@ -142,7 +144,7 @@ void Cube::create()
 
 
     for(int i = 0; i < CUB_VERT_COUNT; i++){
-        cub_vert_col[i] = glm::vec4(0.2f, 1.0f, 0.6f, 1);
+        cub_vert_col[i] = glm::vec4(0.8f, 1.0f, 0.6f, 1);
     }
 
     count = CUB_IDX_COUNT;

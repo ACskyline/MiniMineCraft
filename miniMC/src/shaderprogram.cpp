@@ -9,6 +9,8 @@ ShaderProgram::ShaderProgram(OpenGLContext *context)
     : vertShader(), fragShader(), prog(),
       attrPos(-1), attrNor(-1), attrCol(-1),
       unifModel(-1), unifModelInvTr(-1), unifViewProj(-1), unifColor(-1),
+      unifTexture(-1), unifTime(-1), attrUV(-1), attrAnim(-1), unifWorldEye(-1),
+      unifCube(-1), unifShadow(-1), unifShadowMatrix(-1),
       context(context)
 {}
 
@@ -68,11 +70,89 @@ void ShaderProgram::create(const char *vertfile, const char *fragfile)
     unifModelInvTr = context->glGetUniformLocation(prog, "u_ModelInvTr");
     unifViewProj   = context->glGetUniformLocation(prog, "u_ViewProj");
     unifColor      = context->glGetUniformLocation(prog, "u_Color");
+
+    unifTime = context->glGetUniformLocation(prog, "u_Time");
+    unifTexture = context->glGetUniformLocation(prog, "u_Texture");
+    attrUV = context->glGetAttribLocation(prog, "vs_UV");
+    attrAnim = context->glGetAttribLocation(prog, "vs_Anim");
+    unifWorldEye = context->glGetUniformLocation(prog, "u_WorldEye");
+
+    unifShadow = context->glGetUniformLocation(prog, "u_Shadow");
+    unifShadowMatrix = context->glGetUniformLocation(prog, "u_ShadowMatrix");
+    unifCube = context->glGetUniformLocation(prog, "u_Cube");
 }
 
 void ShaderProgram::useMe()
 {
     context->glUseProgram(prog);
+}
+
+void ShaderProgram::setWorldEye(glm::vec3 eye)
+{
+    useMe();
+
+    if(unifWorldEye!=-1)
+    {
+        context->glUniform3fv(unifWorldEye,1,&eye[0]);
+    }
+}
+
+void ShaderProgram::setTime(int time)
+{
+    useMe();
+
+    if(unifTime!=-1)
+    {
+        context->glUniform1i(unifTime, time);
+    }
+}
+
+void ShaderProgram::setTexture(int i)
+{
+    useMe();
+
+    if(unifTexture != -1)
+    {
+        context->glUniform1i(unifTexture, /*GL_TEXTURE*/i);
+    }
+}
+
+void ShaderProgram::setShadow(int i)
+{
+    useMe();
+
+    if(unifShadow != -1)
+    {
+        context->glUniform1i(unifShadow, /*GL_TEXTURE*/i);
+    }
+}
+
+
+void ShaderProgram::setCube(int i)
+{
+    useMe();
+
+    if(unifCube != -1)
+    {
+        context->glUniform1i(unifCube, /*GL_TEXTURE*/i);
+    }
+}
+
+void ShaderProgram::setShadowMatrix(const glm::mat4 &shadowMat)
+{
+    useMe();
+
+    if (unifShadowMatrix != -1) {
+        // Pass a 4x4 matrix into a uniform variable in our shader
+                        // Handle to the matrix variable on the GPU
+        context->glUniformMatrix4fv(unifShadowMatrix,
+                        // How many matrices to pass
+                           1,
+                        // Transpose the matrix? OpenGL uses column-major, so no.
+                           GL_FALSE,
+                        // Pointer to the first element of the matrix
+                           &shadowMat[0][0]);
+    }
 }
 
 void ShaderProgram::setModelMatrix(const glm::mat4 &model)
@@ -162,14 +242,28 @@ void ShaderProgram::draw(Drawable &d)
         context->glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
     }
 
+    if (attrUV != -1 && d.bindUV()) {
+        context->glEnableVertexAttribArray(attrUV);
+        context->glVertexAttribPointer(attrUV, 2, GL_FLOAT, false, 0, NULL);
+    }
+
+    if (attrAnim != -1 && d.bindAnim()) {
+        context->glEnableVertexAttribArray(attrAnim);
+        context->glVertexAttribPointer(attrAnim, 2, GL_FLOAT, false, 0, NULL);
+    }
+
     // Bind the index buffer and then draw shapes from it.
     // This invokes the shader program, which accesses the vertex buffers.
-    d.bindIdx();
+    if(d.bindIdx())
+    {
     context->glDrawElements(d.drawMode(), d.elemCount(), GL_UNSIGNED_INT, 0);
+    }
 
     if (attrPos != -1) context->glDisableVertexAttribArray(attrPos);
     if (attrNor != -1) context->glDisableVertexAttribArray(attrNor);
     if (attrCol != -1) context->glDisableVertexAttribArray(attrCol);
+    if (attrUV != -1) context->glDisableVertexAttribArray(attrUV);
+    if (attrAnim != -1) context->glDisableVertexAttribArray(attrAnim);
 
     context->printGLErrorLog();
 }
@@ -189,17 +283,22 @@ void ShaderProgram::drawEX(Drawable &d)
         // (referred to by attrPos) with that VBO
     if (attrPos != -1 && d.bindCombine()) {
         context->glEnableVertexAttribArray(attrPos);
-        context->glVertexAttribPointer(attrPos, 4, GL_FLOAT, false, 12*sizeof(float), (void*)0);
+        context->glVertexAttribPointer(attrPos, 4, GL_FLOAT, false, 14*sizeof(float), (void*)0);
     }
 
     if (attrNor != -1 && d.bindCombine()) {
         context->glEnableVertexAttribArray(attrNor);
-        context->glVertexAttribPointer(attrNor, 4, GL_FLOAT, false, 12*sizeof(float), (void*)(4*sizeof(float)));
+        context->glVertexAttribPointer(attrNor, 4, GL_FLOAT, false, 14*sizeof(float), (void*)(4*sizeof(float)));
     }
 
     if (attrCol != -1 && d.bindCombine()) {
         context->glEnableVertexAttribArray(attrCol);
-        context->glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 12*sizeof(float), (void*)(8*sizeof(float)));
+        context->glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 14*sizeof(float), (void*)(8*sizeof(float)));
+    }
+
+    if (attrUV != -1 && d.bindCombine()) {
+        context->glEnableVertexAttribArray(attrUV);
+        context->glVertexAttribPointer(attrUV, 2, GL_FLOAT, false, 14*sizeof(float), (void*)(12*sizeof(float)));
     }
 
     // Bind the index buffer and then draw shapes from it.
@@ -210,6 +309,7 @@ void ShaderProgram::drawEX(Drawable &d)
     if (attrPos != -1) context->glDisableVertexAttribArray(attrPos);
     if (attrNor != -1) context->glDisableVertexAttribArray(attrNor);
     if (attrCol != -1) context->glDisableVertexAttribArray(attrCol);
+    if (attrUV != -1) context->glDisableVertexAttribArray(attrUV);
 
     context->printGLErrorLog();
 }

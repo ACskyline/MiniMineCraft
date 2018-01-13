@@ -10,7 +10,7 @@ class Drawable
 protected:
     int count;     // The number of indices stored in bufIdx.
     GLuint bufIdx; // A Vertex Buffer Object that we will use to store triangle indices (GLuints)
-    GLuint bufPos; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
+     // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
     GLuint bufNor; // A Vertex Buffer Object that we will use to store mesh normals (vec4s)
     GLuint bufCol; // Can be used to pass per-vertex color information to the shader, but is currently unused.
                    // Instead, we use a uniform vec4 in the shader to set an overall color for the geometry
@@ -28,8 +28,12 @@ protected:
                           // we need to pass our OpenGL context to the Drawable in order to call GL functions
                           // from within this class.
 
+    GLuint bufUV;
+    GLuint bufAnim;
+    bool uvBound;
+    bool animBound;
 
-public:
+public:GLuint bufPos;
     Drawable(OpenGLContext* context);
     virtual ~Drawable();
 
@@ -46,11 +50,15 @@ public:
     void generatePos();
     void generateNor();
     void generateCol();
+    void generateUV();
+    void generateAnim();
     void generateCombine();
 
     bool bindIdx();
     bool bindPos();
     bool bindNor();
     bool bindCol();
+    bool bindUV();
+    bool bindAnim();
     bool bindCombine();
 };

@@ -3,8 +3,13 @@
 #include <scene/cube.h>
 #include <utility>
 
-Terrain::Terrain(OpenGLContext* context, glm::vec3 origin) : mOrigin(origin), mContext(context)//, dimensions(64, 256, 64)
-{}
+Terrain::Terrain(OpenGLContext* context, int type, glm::vec3 origin) :
+    mOrigin(origin), mContext(context), mExtraTerrain(nullptr), mType(type),
+    mLSystem(nullptr), mFunc(0), mTarget(glm::vec2(0,0))
+{
+
+    setAutoDelete(false);
+}
 
 Terrain::~Terrain()
 {
@@ -62,7 +67,20 @@ void Terrain::setBlockAt(int x, int y, int z, BlockType t)
     int blockZ = z - chunkZ;
 
     if(mChunkMap.count(std::make_pair(chunkX,chunkZ))!=0)
-        mChunkMap[std::make_pair(chunkX,chunkZ)]->setBlockType(blockX,y,blockZ,t);
+    {
+        Chunk* chunk = mChunkMap[std::make_pair(chunkX,chunkZ)];
+        if(chunk!=nullptr)
+            chunk->setBlockType(blockX,y,blockZ,t);
+    }
+    else
+    {
+        Chunk* newChunk = new Chunk(mContext, glm::ivec2(chunkX,chunkZ));
+        newChunk->mpTerrain = this;
+        newChunk->setBlockType(blockX,y,blockZ,t);
+        mChunkVector.push_back(newChunk);
+        mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
+        //newChunk->createEXX();
+    }
 }
 
 void Terrain::setBlockAtEX(glm::vec3 pos, BlockType t)
@@ -81,6 +99,15 @@ void Terrain::setBlockAtEX(glm::vec3 pos, BlockType t)
         Chunk* chunk = mChunkMap[std::make_pair(chunkX,chunkZ)];
         if(chunk!=nullptr)
             chunk->setBlockType(blockX,blockY,blockZ,t);
+    }
+    else
+    {
+        Chunk* newChunk = new Chunk(mContext, chunkk);
+        newChunk->mpTerrain = this;
+        newChunk->setBlockType(blockX,blockY,blockZ,t);
+        mChunkVector.push_back(newChunk);
+        mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
+        //newChunk->createEXX();
     }
 }
 
@@ -274,64 +301,19 @@ void Terrain::createTestChunk(glm::ivec2 origin)
     mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
     newChunk->createEXX();////////////////////////////////////////////////////////////
 
-    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
-                             glm::ivec2(MaxX,0),
-                             glm::ivec2(0,-MaxZ),
-                             glm::ivec2(0,MaxZ) };
-    for(int m=0;m<4;m++)
-    {
-        Chunk* oldChunk = nullptr;
-        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
-            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
-        if(oldChunk!=nullptr)
-            oldChunk->createEXX();////////////////////////////////////////////////////////////
-    }
-}
-
-void Terrain::createChunk(glm::ivec2 origin)
-{
-    Chunk* newChunk = new Chunk(mContext, origin);
-    for(int i = 0;i<MaxX;i++)
-    {
-        for(int k = 0;k<MaxZ;k++)
-        {
-            float yF = fbm(glm::vec2((origin.x+(float)i)/(MaxX),(origin.y+(float)k)/MaxY));
-            int yI = 2+(int)(yF*10.f);
-            for(int j = 0;j<MaxY/2+yI;j++)
-            {
-                if(j<MaxY/2)
-                {
-                    newChunk->setBlockType(i,j,k,STONE);
-                }
-                else if(j<MaxY/2+yI-1)
-                {
-                    newChunk->setBlockType(i,j,k,DIRT);
-                }
-                else
-                {
-                    newChunk->setBlockType(i,j,k,GRASS);
-                }
-            }
-        }
-    }
-    //
-    newChunk->mpTerrain = this;
-    mChunkVector.push_back(newChunk);
-    mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
-    newChunk->createEXX();
-
-    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
-                             glm::ivec2(MaxX,0),
-                             glm::ivec2(0,-MaxZ),
-                             glm::ivec2(0,MaxZ) };
-    for(int m=0;m<4;m++)
-    {
-        Chunk* oldChunk = nullptr;
-        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
-            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
-        if(oldChunk!=nullptr)
-            oldChunk->createEXX();
-    }
+    updateAdjacentChunk(newChunk);
+    //    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
+    //                             glm::ivec2(MaxX,0),
+    //                             glm::ivec2(0,-MaxZ),
+    //                             glm::ivec2(0,MaxZ) };
+    //    for(int m=0;m<4;m++)
+    //    {
+    //        Chunk* oldChunk = nullptr;
+    //        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
+    //            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
+    //        if(oldChunk!=nullptr)
+    //            oldChunk->createEXX();////////////////////////////////////////////////////////////
+    //    }
 }
 
 void Terrain::createChunkEX(glm::ivec2 origin)
@@ -341,22 +323,26 @@ void Terrain::createChunkEX(glm::ivec2 origin)
     {
         for(int k = 0;k<MaxZ;k++)
         {
-            float yF = fbm(glm::vec2((origin.x+(float)i)/(MaxX),(origin.y+(float)k)/MaxY));
-            int yI = 2+(int)(yF*10.f);
-            for(int j = 0;j<MaxY/2+yI;j++)
+            float yF = glm::fract(fbm(glm::vec2((origin.x+(float)i)/(15.f*MaxX),(origin.y+(float)k)/(15.f*MaxZ))));
+            int yI = MaxY/2.f + 1.f + (int)(yF*(MaxY/2.f - 1.f));//between MaxY/2 + 1 and MaxY
+            for(int j = 0;j<MaxY;j++)
             {
                 if(j<MaxY/2)
                 {
                     newChunk->setBlockType(i,j,k,STONE);
                 }
-                else if(j<MaxY/2+yI-1)
+
+                if(j>=MaxY/2 && j<yI)
                 {
                     newChunk->setBlockType(i,j,k,DIRT);
                 }
-                else
+
+                if(j==yI)
                 {
                     newChunk->setBlockType(i,j,k,GRASS);
                 }
+
+                //otherwise empty, which is initial value
             }
         }
     }
@@ -364,8 +350,72 @@ void Terrain::createChunkEX(glm::ivec2 origin)
     newChunk->mpTerrain = this;
     mChunkVector.push_back(newChunk);
     mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
-    newChunk->createEXX();
 
+    //updateChunk(newChunk);
+
+    //updateAdjacentChunk(newChunk);
+
+    //    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
+    //                             glm::ivec2(MaxX,0),
+    //                             glm::ivec2(0,-MaxZ),
+    //                             glm::ivec2(0,MaxZ) };
+    //    for(int m=0;m<4;m++)
+    //    {
+    //        Chunk* oldChunk = nullptr;
+    //        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
+    //            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
+    //        if(oldChunk!=nullptr)
+    //            oldChunk->createEXX();
+    //    }
+}
+
+void Terrain::createChunkWater(glm::ivec2 origin)
+{
+    Chunk* newChunk = new Chunk(mContext, origin);
+    for(int i = 0;i<MaxX;i++)
+    {
+        for(int k = 0;k<MaxZ;k++)
+        {
+            float yF = glm::fract(fbm(glm::vec2((origin.x+(float)i)/(10.f*MaxX),(origin.y+(float)k)/(10.f*MaxZ))));
+            int yI = MaxY/3.f + yF*(MaxY/6.f);//between MaxY/3 and MaxY/2
+            for(int j = yI;j<MaxY/2;j++)
+            {
+
+                if(mLSystem!=nullptr)
+                {
+                    if(mLSystem->get(glm::ivec2(origin.x+i,origin.y+k)))
+                        newChunk->setBlockType(i,j,k,WATER);
+                }
+                //otherwise empty, which is initial value
+            }
+        }
+    }
+
+    newChunk->mpTerrain = this;
+    mChunkVector.push_back(newChunk);
+    mChunkMap[std::make_pair(newChunk->mPos.x,newChunk->mPos.y)] = newChunk;
+
+    //updateChunk(newChunk);
+
+    //updateAdjacentChunk(newChunk);
+
+    //    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
+    //                             glm::ivec2(MaxX,0),
+    //                             glm::ivec2(0,-MaxZ),
+    //                             glm::ivec2(0,MaxZ) };
+    //    for(int m=0;m<4;m++)
+    //    {
+    //        Chunk* oldChunk = nullptr;
+    //        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
+    //            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
+    //        if(oldChunk!=nullptr)
+    //            oldChunk->createEXX();
+    //    }
+}
+
+void Terrain::updateAdjacentChunk(Chunk *chunk)
+{
+    glm::ivec2 origin = chunk->mPos;
     glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
                              glm::ivec2(MaxX,0),
                              glm::ivec2(0,-MaxZ),
@@ -377,5 +427,314 @@ void Terrain::createChunkEX(glm::ivec2 origin)
             oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
         if(oldChunk!=nullptr)
             oldChunk->createEXX();
+    }
+}
+
+void Terrain::updateAdjacentChunkEX(Chunk *chunk)
+{
+    glm::ivec2 origin = chunk->mPos;
+    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
+                             glm::ivec2(MaxX,0),
+                             glm::ivec2(0,-MaxZ),
+                             glm::ivec2(0,MaxZ) };
+    for(int m=0;m<4;m++)
+    {
+        Chunk* oldChunk = nullptr;
+        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
+            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
+        if(oldChunk!=nullptr)
+            oldChunk->createEXXX();
+    }
+}
+
+void Terrain::bindAdjacentChunk(glm::ivec2 origin)
+{
+    glm::ivec2 offset[4] = { glm::ivec2(-MaxX,0),
+                             glm::ivec2(MaxX,0),
+                             glm::ivec2(0,-MaxZ),
+                             glm::ivec2(0,MaxZ) };
+    for(int m=0;m<4;m++)
+    {
+        Chunk* oldChunk = nullptr;
+        if(mChunkMap.count(std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y))!=0)
+            oldChunk = mChunkMap[std::make_pair(origin.x+offset[m].x,origin.y+offset[m].y)];
+        if(oldChunk!=nullptr)
+            oldChunk->bind();
+    }
+}
+
+void Terrain::mergeTerrain(glm::ivec2 origin, int radius, int stepPerLevel)
+{
+    Terrain* water = nullptr;
+    Terrain* land = nullptr;
+    water = mType == 1 ? this : mExtraTerrain->mType == 1 ? mExtraTerrain : nullptr;
+    land = mType == 0 ? this : mExtraTerrain->mType == 0 ? mExtraTerrain : nullptr;
+
+    Chunk* waterChunk = nullptr;
+    if(water->mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        waterChunk = water->mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+
+    Chunk* landChunk = nullptr;
+    if(land->mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        landChunk = land->mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+
+    //record water/land information
+    bool hasWater[MaxX*MaxZ] = {};
+    int waterMaxY[MaxX*MaxZ] = {};
+    int waterMinY[MaxX*MaxZ] = {};
+    int landMaxY[MaxX*MaxZ] = {};
+
+    std::fill_n(hasWater, MaxX*MaxZ, false);
+    std::fill_n(waterMaxY, MaxX*MaxZ, -1);
+    std::fill_n(waterMinY, MaxX*MaxZ, MaxY+1);
+    std::fill_n(landMaxY, MaxX*MaxZ, -1);
+
+    //record water terrain chunk information
+    for(int i = 0;i<MaxX;i++)
+    {
+        for(int k = 0;k<MaxZ;k++)
+        {
+            for(int j = 0;j<MaxY;j++)
+            {
+                if(waterChunk->getBlockType(i,j,k)==WATER)
+                {
+                    if(landChunk->getBlockType(i,j,k)!=EMPTY)
+                        landChunk->setBlockType(i,j,k,EMPTY);
+
+                    hasWater[i*MaxZ + k] = true;
+                    if(j>waterMaxY[i*MaxZ + k])
+                    {
+                        waterMaxY[i*MaxZ + k] = j;
+                    }
+
+                    if(j<waterMinY[i*MaxZ + k])
+                    {
+                        waterMinY[i*MaxZ + k] = j;
+                    }
+
+                }
+            }
+        }
+    }
+
+    //merge
+    for(int i = 0;i<MaxX;i++)
+    {
+        for(int k = 0;k<MaxZ;k++)
+        {
+            if(hasWater[i*MaxZ + k]==true)
+            {
+                int levelX = 0;
+                int levelZ = 0;
+                int wMaxY = waterMaxY[i*MaxZ + k];
+                for(int iOffset = -radius;iOffset<=radius;iOffset++)
+                {
+                    for(int kOffset = -radius;kOffset<=radius;kOffset++)
+                    {
+                        levelX = abs(iOffset)/stepPerLevel;
+                        levelZ = abs(kOffset)/stepPerLevel;
+                        int jMax = MaxY;//no ceiling
+                        for(int j= wMaxY + (levelX + levelZ) + 1;j<jMax;j++)
+                        {
+                            if(landChunk->getBlockType(i+iOffset,j,k+kOffset)!=EMPTY)
+                            {
+                                landChunk->setBlockType(i+iOffset,j,k+kOffset,EMPTY);
+                                if(landChunk->getBlockType(i+iOffset,j-1,k+kOffset)!=EMPTY)
+                                    landChunk->setBlockType(i+iOffset,j-1,k+kOffset,GRASS);
+                            }
+                        }
+                    }
+                }
+
+                int wMinY = waterMinY[i*MaxZ + k];
+                for(int j = 0;j<wMinY;j++)
+                {
+                    if(landChunk->getBlockType(i,j,k)==EMPTY)
+                        waterChunk->setBlockType(i,j,k, WATER);
+                }
+            }
+        }
+    }
+
+    //landChunk->createEXX();
+//    land->updateChunk(landChunk);
+//    land->updateAdjacentChunk(landChunk);
+    land->update(origin);
+    //waterChunk->createEXX();
+//    water->updateChunk(waterChunk);
+//    water->updateAdjacentChunk(waterChunk);
+    water->update(origin);
+}
+
+void Terrain::mergeTerrainEX(glm::ivec2 origin, int radius, int stepPerLevel)
+{
+    Terrain* water = nullptr;
+    Terrain* land = nullptr;
+    water = mType == 1 ? this : mExtraTerrain->mType == 1 ? mExtraTerrain : nullptr;
+    land = mType == 0 ? this : mExtraTerrain->mType == 0 ? mExtraTerrain : nullptr;
+
+    Chunk* waterChunk = nullptr;
+    if(water->mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        waterChunk = water->mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+
+    Chunk* landChunk = nullptr;
+    if(land->mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        landChunk = land->mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+
+    //record water/land information
+    bool hasWater[MaxX*MaxZ] = {};
+    int waterMaxY[MaxX*MaxZ] = {};
+    int waterMinY[MaxX*MaxZ] = {};
+    int landMaxY[MaxX*MaxZ] = {};
+
+    std::fill_n(hasWater, MaxX*MaxZ, false);
+    std::fill_n(waterMaxY, MaxX*MaxZ, -1);
+    std::fill_n(waterMinY, MaxX*MaxZ, MaxY+1);
+    std::fill_n(landMaxY, MaxX*MaxZ, -1);
+
+    //record water terrain chunk information
+    for(int i = 0;i<MaxX;i++)
+    {
+        for(int k = 0;k<MaxZ;k++)
+        {
+            for(int j = 0;j<MaxY;j++)
+            {
+                if(waterChunk->getBlockType(i,j,k)==WATER)
+                {
+                    if(landChunk->getBlockType(i,j,k)!=EMPTY)
+                        landChunk->setBlockType(i,j,k,EMPTY);
+
+                    hasWater[i*MaxZ + k] = true;
+                    if(j>waterMaxY[i*MaxZ + k])
+                    {
+                        waterMaxY[i*MaxZ + k] = j;
+                    }
+
+                    if(j<waterMinY[i*MaxZ + k])
+                    {
+                        waterMinY[i*MaxZ + k] = j;
+                    }
+
+                }
+            }
+        }
+    }
+
+    //merge
+    for(int i = 0;i<MaxX;i++)
+    {
+        for(int k = 0;k<MaxZ;k++)
+        {
+            if(hasWater[i*MaxZ + k]==true)
+            {
+                int levelX = 0;
+                int levelZ = 0;
+                int wMaxY = waterMaxY[i*MaxZ + k];
+                for(int iOffset = -radius;iOffset<=radius;iOffset++)
+                {
+                    for(int kOffset = -radius;kOffset<=radius;kOffset++)
+                    {
+                        levelX = abs(iOffset)/stepPerLevel;
+                        levelZ = abs(kOffset)/stepPerLevel;
+                        int jMax = MaxY;//no ceiling
+                        for(int j= wMaxY + (levelX + levelZ) + 1;j<jMax;j++)
+                        {
+                            if(landChunk->getBlockType(i+iOffset,j,k+kOffset)!=EMPTY)
+                            {
+                                landChunk->setBlockType(i+iOffset,j,k+kOffset,EMPTY);
+                                if(landChunk->getBlockType(i+iOffset,j-1,k+kOffset)!=EMPTY)
+                                    landChunk->setBlockType(i+iOffset,j-1,k+kOffset,GRASS);
+                            }
+                        }
+                    }
+                }
+
+                int wMinY = waterMinY[i*MaxZ + k];
+                for(int j = 0;j<wMinY;j++)
+                {
+                    if(landChunk->getBlockType(i,j,k)==EMPTY)
+                        waterChunk->setBlockType(i,j,k, WATER);
+                }
+            }
+        }
+    }
+}
+
+void Terrain::update(glm::ivec2 origin)
+{
+    Chunk* chunk = nullptr;
+    if(mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        chunk = mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+    if(chunk!=nullptr)
+    {
+        updateChunk(chunk);
+        updateAdjacentChunk(chunk);
+    }
+}
+
+void Terrain::updateEX(glm::ivec2 origin)
+{
+    Chunk* chunk = nullptr;
+    if(mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        chunk = mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+    if(chunk!=nullptr)
+    {
+        updateChunkEX(chunk);
+        updateAdjacentChunkEX(chunk);
+    }
+}
+
+void Terrain::updateChunk(Chunk *chunk)
+{
+    chunk->createEXX();
+}
+
+void Terrain::updateChunkEX(Chunk *chunk)
+{
+    chunk->createEXXX();
+}
+
+void Terrain::bindChunk(glm::ivec2 origin)
+{
+    Chunk* chunk = nullptr;
+    if(mChunkMap.count(std::make_pair(origin.x,origin.y))!=0)
+    {
+        chunk = mChunkMap[std::make_pair(origin.x,origin.y)];
+    }
+    if(chunk!=nullptr)
+    {
+        chunk->bind();
+    }
+}
+
+void Terrain::run()
+{
+    switch(mFunc)
+    {
+    case 0:
+        break;
+    case 1:
+        createChunkEX(mTarget);
+        break;
+    case 2:
+        createChunkWater(mTarget);
+        break;
+    case 3:
+        updateEX(mTarget);
+        break;
+    default:
+        break;
     }
 }

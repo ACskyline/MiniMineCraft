@@ -24,6 +24,16 @@ public:
     int unifViewProj; // A handle for the "uniform" mat4 representing combined projection and view matrices in the vertex shader
     int unifColor; // A handle for the "uniform" vec4 representing color of geometry in the vertex shader
 
+    int unifTime;
+    int unifTexture;
+    int attrUV;
+    int attrAnim;
+    int unifWorldEye;
+
+    int unifShadow;
+    int unifShadowMatrix;
+
+    int unifCube;
 public:
     ShaderProgram(OpenGLContext* context);
     // Sets up the requisite GL data and shaders from the given .glsl files
@@ -37,6 +47,12 @@ public:
     // Pass the given color to this shader on the GPU
     void setGeometryColor(glm::vec4 color);
     // Draw the given object to our screen using this ShaderProgram's shaders
+    void setTime(int time);
+    void setWorldEye(glm::vec3 eye);
+    void setTexture(int i);
+    void setShadow(int i);
+    void setShadowMatrix(const glm::mat4 &shadowMat);
+    void setCube(int i);
     void draw(Drawable &d);
     void drawEX(Drawable &d);
     // Utility function used in create()

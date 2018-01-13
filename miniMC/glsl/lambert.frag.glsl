@@ -22,10 +22,22 @@ in vec4 fs_Col;
 out vec4 out_Col; // This is the final output color that you will see on your
                   // screen for the pixel that is currently being processed.
 
+uniform int u_Time;
+uniform sampler2D u_Texture;
+in vec2 fs_UV;
+in vec2 fs_Anim;
+
+uniform sampler2D u_Shadow;
+
+in vec4 shadowPos;
+in vec4 worldPos;
+
 void main()
 {
     // Material base color (before shading)
-        vec4 diffuseColor = fs_Col;
+    //        vec4 diffuseColor = fs_Col;
+//    vec4 diffuseColor = texture(u_Texture,fs_UV);
+    vec4 diffuseColor = texture(u_Texture,fs_UV + fs_Anim * vec2(((u_Time)%16)/256.f, 0.f));
 
         // Calculate the diffuse term for Lambert shading
         float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
@@ -38,6 +50,20 @@ void main()
                                                             //to simulate ambient lighting. This ensures that faces that are not
                                                             //lit by our point light are not completely black.
 
+
+        vec3 sp = shadowPos.xyz/shadowPos.w;
+        sp = clamp(sp.xyz,vec3(-1,-1,0),vec3(1,1,1));
+        vec2 uvS = vec2(sp.x/2.f + .5f, sp.y/2.f + .5f);
+        vec4 bufferDepth = texture(u_Shadow, uvS);
+        float coeff = 1;
+
+        if(sp.z > bufferDepth.z + 0.005)//bias
+        {
+            coeff = 0.5;//*(abs(shadowPos.z - bufferDepth.z));
+        }
+
+
         // Compute final shaded color
-        out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
+//        out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
+        out_Col = vec4(coeff * diffuseColor.rgb, diffuseColor.a);
 }

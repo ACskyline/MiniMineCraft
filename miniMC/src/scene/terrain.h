@@ -4,6 +4,8 @@
 #include "chunk.h"
 #include "player.h"
 #include "utils.h"
+#include "scene/lsystem.h"
+#include <QRunnable>
 
 // C++ 11 allows us to define the size of an enum. This lets us use only one byte
 // of memory to store our different block types. By default, the size of a C++ enum
@@ -14,22 +16,37 @@ class Player;
 
 class Chunk;
 
-class Terrain
+class Terrain : public QRunnable
 {
 private:
     glm::vec3 mOrigin; //not used yet
 public:
-
-    Terrain(OpenGLContext* context, glm::vec3 origin = glm::vec3(0,0,0));
+    int mType;//0 is land 1 is water
+    int mFunc;
+    glm::ivec2 mTarget;
+    Terrain(OpenGLContext* context, int type = 0, glm::vec3 origin = glm::vec3(0,0,0));
     std::vector<Chunk*> mChunkVector;
     std::map<std::pair<int,int>,Chunk*> mChunkMap;
     OpenGLContext* mContext;
+    Terrain* mExtraTerrain;
+    LSystem* mLSystem;
     //BlockType m_blocks[64][256][64];                    // A 3D list of the blocks in the world.
                                                            // You'll need to replace this with a far more
                                                            // efficient system of storing terrain.
     void createTestChunk(glm::ivec2 origin = glm::ivec2(0,0));
     void createChunk(glm::ivec2 origin = glm::ivec2(0,0));
     void createChunkEX(glm::ivec2 origin = glm::ivec2(0,0));
+    void createChunkWater(glm::ivec2 origin = glm::ivec2(0,0));
+    void mergeTerrain(glm::ivec2 origin = glm::ivec2(0,0), int radius = 7, int stepPerLevel = 2);
+    void mergeTerrainEX(glm::ivec2 origin = glm::ivec2(0,0), int radius = 7, int stepPerLevel = 2);
+    void updateAdjacentChunk(Chunk* chunk);//call createEXX
+    void updateAdjacentChunkEX(Chunk* chunk);//call createEXXX need to call bind manully
+    void updateChunk(Chunk* chunk);//call createEXX
+    void updateChunkEX(Chunk* chunk);//call createEXXX need to call bind manully
+    void update(glm::ivec2 origin);
+    void updateEX(glm::ivec2 origin);
+    void bindChunk(glm::ivec2 origin);//bind
+    void bindAdjacentChunk(glm::ivec2 origin);//bind
     //glm::ivec3 dimensions;
 
     BlockType getBlockAt(int x, int y, int z);   // Given a world-space coordinate (which may have negative
@@ -52,4 +69,6 @@ public:
     float interpNoise(glm::vec2 p);
     float fbm(glm::vec2 p);
     float pattern(glm::vec2 p);
+
+    void run();
 };

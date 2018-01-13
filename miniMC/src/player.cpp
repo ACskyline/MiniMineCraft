@@ -1,15 +1,18 @@
 #include "player.h"
 #include <QKeyEvent>
 #include <utility>
+#include <QThreadPool>
 
 Player::Player(OpenGLContext* context, glm::vec3 pos) :
     Drawable(context), mPos(pos), mForward(1,0,0), mUp(0,1,0), mSpeed(3),
     mAccelVerti(-4), mSpeedVerti(0), mOnGround(false), mAllowGravity(true),
     mKeyPressedW(false), mKeyPressedA(false), mKeyPressedS(false), mKeyPressedD(false),
-    mKeyPressedQ(false), mKeyPressedE(false), mKeyPressedSpace(false),
+    mKeyPressedQ(false), mKeyPressedE(false), mKeyPressedV(false), mKeyPressedSpace(false),
     mMousePressedLMB(false), mMousePressedRMB(false),
     mMousePos(0,0), mMouseMoved(false),
-    mpTerrain(nullptr), mpCamera(new Camera())
+    mpTerrain(nullptr), mpTerrainWater(nullptr),
+    mpCamera(new Camera()), mTarget(glm::ivec2(0,0)),
+    mAddType(STONE), mInWater(false), mEyeInWater(false), mMulti(false)
 {
     mpCamera->ref = this->mPos + mpCamera->ref - mpCamera->eye + glm::vec3(0.5,1.8,0.5);
     mpCamera->eye = this->mPos + glm::vec3(0.5,1.8,0.5);
@@ -23,6 +26,8 @@ Player::Player(OpenGLContext* context, glm::vec3 pos) :
     mVertex.push_back(glm::vec3(1,2,0));
     mVertex.push_back(glm::vec3(1,2,1));
     mVertex.push_back(glm::vec3(0,2,1));
+
+    setAutoDelete(false);
 }
 
 Player::~Player()
@@ -280,6 +285,10 @@ void Player::myKeyPressEvent(QKeyEvent *e)
         break;
     case Qt::Key_Space:
         mKeyPressedSpace = true;
+        break;
+    case Qt::Key_V:
+        mKeyPressedV = true;
+        break;
     default:
         break;
     }
@@ -309,6 +318,10 @@ void Player::myKeyReleaseEvent(QKeyEvent *e)
         break;
     case Qt::Key_Space:
         mKeyPressedSpace = false;
+        break;
+    case Qt::Key_V:
+        mKeyPressedV = false;
+        break;
     default:
         break;
     }
@@ -348,108 +361,135 @@ void Player::myMouseReleaseEvent(QMouseEvent *e)
 
 void Player::myUpdate(float deltaTime)
 {
-//    if(mKeyPressedW||mKeyPressedA||mKeyPressedS||mKeyPressedD||
-//            mKeyPressedQ||mKeyPressedE||mKeyPressedSpace||
-//            mMousePressedLMB||mMousePressedRMB||mMouseMoved)
+    //    if(mKeyPressedW||mKeyPressedA||mKeyPressedS||mKeyPressedD||
+    //            mKeyPressedQ||mKeyPressedE||mKeyPressedSpace||
+    //            mMousePressedLMB||mMousePressedRMB||mMouseMoved)
 
-        glm::vec3 deltaPos(0,0,0);
+    glm::vec3 deltaPos(0,0,0);
 
-        //TO DO
-        //gravity
-        if(mAllowGravity&&mOnGround)
+    //gravity
+    if(mAllowGravity&&mOnGround)
+    {
+        mSpeedVerti = 0;
+        mAccelVerti = 0;
+    }
+
+    if(mKeyPressedW)
+    {
+        deltaPos += mForward*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedS)
+    {
+        deltaPos -= mForward*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedA)
+    {
+        deltaPos += glm::cross(mUp,mForward)*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedD)
+    {
+        deltaPos -= glm::cross(mUp,mForward)*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedQ)
+    {
+        deltaPos += mUp*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedE)
+    {
+        deltaPos -= mUp*mSpeed*deltaTime;
+    }
+
+    if(mKeyPressedV)
+    {
+        int i = (int)mAddType;
+        int j = (int)BLOCKTYPEMAX;
+        i = i + 1;
+        if(i>=j) i = 1;
+        mAddType = (BlockType)i;
+        mKeyPressedV = false;
+    }
+
+    if(mKeyPressedSpace)
+    {
+        //printf("space\n");
+        if(mAllowGravity&&(mOnGround||mInWater))
         {
-            mSpeedVerti = 0;
-            mAccelVerti = 0;
+            //printf("%d ",mInWater);
+            mSpeedVerti = 6;
+            //mOnGround = false;
         }
+        //mKeyPressedSpace = false;
+    }
 
-        if(mKeyPressedW)
+    if(mMouseMoved)
+    {
+        glm::vec2 diff = 0.05f * (mMousePos);
+        mpCamera->RotateAboutUp(-diff.x);
+        mpCamera->RotateAboutRight(-diff.y);
+        mForward = glm::normalize(glm::vec3(mpCamera->ref.x - mpCamera->eye.x,
+                                            0,
+                                            mpCamera->ref.z - mpCamera->eye.z));
+        mMouseMoved = false;
+    }
+
+    //delete block
+    if(mMousePressedLMB)
+    {
+        deleteBlock();
+        mMousePressedLMB = false;
+    }
+
+    //add block
+    if(mMousePressedRMB)
+    {
+        if(mAddType == WATER||mAddType == ICE)
+            addBlock(mpTerrainWater);
+        else
+            addBlock(mpTerrain);
+        mMousePressedRMB = false;
+    }
+
+    //x-z plane uniform speed, y axis apply gravity
+
+    if(mAllowGravity&&!mOnGround)
+    {
+        if(mInWater)
         {
-            deltaPos += mForward*mSpeed*deltaTime;
+            mAccelVerti = -8;
         }
-
-        if(mKeyPressedS)
-        {
-            deltaPos -= mForward*mSpeed*deltaTime;
-        }
-
-        if(mKeyPressedA)
-        {
-            deltaPos += glm::cross(mUp,mForward)*mSpeed*deltaTime;
-        }
-
-        if(mKeyPressedD)
-        {
-            deltaPos -= glm::cross(mUp,mForward)*mSpeed*deltaTime;
-        }
-
-        if(mKeyPressedQ)
-        {
-            deltaPos += mUp*mSpeed*deltaTime;
-        }
-
-        if(mKeyPressedE)
-        {
-            deltaPos -= mUp*mSpeed*deltaTime;
-        }
-
-        if(mKeyPressedSpace)
-        {
-            //TO DO
-            //printf("space\n");
-            if(mAllowGravity&&mOnGround)
-            {
-                //printf("jump\n");
-                mSpeedVerti = 5;
-                mOnGround = false;
-            }
-            //mKeyPressedSpace = false;
-        }
-
-        if(mMouseMoved)
-        {
-            glm::vec2 diff = 0.05f * (mMousePos);
-            mpCamera->RotateAboutUp(-diff.x);
-            mpCamera->RotateAboutRight(-diff.y);
-            mForward = glm::normalize(glm::vec3(mpCamera->ref.x - mpCamera->eye.x,
-                                                0,
-                                                mpCamera->ref.z - mpCamera->eye.z));
-            mMouseMoved = false;
-        }
-
-        //delete block
-        if(mMousePressedLMB)
-        {
-            deleteBlock();
-            mMousePressedLMB = false;
-        }
-
-        //add block
-        if(mMousePressedRMB)
-        {
-            addBlock();
-            mMousePressedRMB = false;
-        }
-
-        //x-z plane uniform speed, y axis apply gravity
-
-        if(mAllowGravity&&!mOnGround)
+        else
         {
             mAccelVerti = -10;
-            mSpeedVerti += deltaTime*mAccelVerti;
-            deltaPos += deltaTime*mSpeedVerti*mUp;
         }
+        mSpeedVerti += deltaTime*mAccelVerti;
+        deltaPos += deltaTime*mSpeedVerti*mUp;
+    }
 
-        glm::vec3 newPos = mPos + deltaPos;
+    glm::vec3 newPos = mPos + deltaPos;
 
-        mOnGround = false;
-        collisionTerrainEX(mPos, &newPos, &mOnGround);//will only return the first collision result even thought we are recursively invoking it
+    mInWater = false;
+    mInWater = bodyInWater();
+    //collisionTerrainWater(mPos, newPos, &mInWater);
+    //printf("inW:%d \n",mInWater);
 
-        mPos = newPos;
+    mOnGround = false;
+    collisionTerrainEX(mPos, &newPos, &mOnGround);//will only return the first collision result even thought we are recursively invoking it
+    //printf("onG:%d ",mOnGround);
 
-        borderCheck();
 
-        mpCamera->ref = this->mPos + mpCamera->ref - mpCamera->eye + glm::vec3(0.5,1.8,0.5);
-        mpCamera->eye = mPos + glm::vec3(0.5,1.8,0.5);
+    mEyeInWater = eyeInWater();
+
+    mPos = newPos;
+
+    borderCheck();
+
+    mpCamera->ref = this->mPos + mpCamera->ref - mpCamera->eye + glm::vec3(0.5,1.8,0.5);
+    mpCamera->eye = mPos + glm::vec3(0.5,1.8,0.5);
 
 }
 
@@ -467,9 +507,57 @@ void Player::borderCheck()
         glm::ivec2 chunkXZ = mpTerrain->toChunkXZ(mPos + offset[i]);
         if(mpTerrain->mChunkMap.count(std::make_pair(chunkXZ.x,chunkXZ.y))==0)
         {
-            //mpTerrain->createTestChunk(chunkXZ);
-            //mpTerrain->createChunk(chunkXZ);
-            mpTerrain->createChunkEX(chunkXZ);
+//            if(mMulti==false)
+//            {
+//            mTarget = chunkXZ;
+//            QThreadPool::globalInstance()->start(this);
+//            mMulti=true;
+//            }
+
+
+            QThreadPool* threadPool = new QThreadPool();
+
+            mpTerrain->mFunc = 1;
+            mpTerrain->mTarget = chunkXZ;
+
+            mpTerrainWater->mFunc = 2;
+            mpTerrainWater->mTarget = chunkXZ;
+
+
+            threadPool->start(mpTerrain);
+            threadPool->start(mpTerrainWater);
+
+            threadPool->waitForDone();
+
+            //printf("done1\n");
+
+            mpTerrain->mergeTerrainEX(chunkXZ);
+
+            //printf("done2\n");
+
+            mpTerrain->mFunc = 3;
+            mpTerrain->mTarget = chunkXZ;
+
+            mpTerrainWater->mFunc = 3;
+            mpTerrainWater->mTarget = chunkXZ;
+
+            threadPool->start(mpTerrain);
+            threadPool->start(mpTerrainWater);
+
+            threadPool->waitForDone();
+
+            mpTerrain->bindChunk(chunkXZ);
+            mpTerrain->bindAdjacentChunk(chunkXZ);
+            mpTerrainWater->bindChunk(chunkXZ);
+            mpTerrainWater->bindAdjacentChunk(chunkXZ);
+
+            //printf("done3\n");
+
+            delete threadPool;
+
+//            mpTerrain->createChunkEX(chunkXZ);
+//            mpTerrainWater->createChunkWater(chunkXZ);
+//            mpTerrain->mergeTerrain(chunkXZ);
         }
     }
 }
@@ -496,7 +584,7 @@ void Player::deleteBlock()
                 {
                     glm::vec3 worldTarget = mpCamera->eye + glm::vec3(i,j,k);
                     //if(mpTerrain->getBlockAtEX(mpCamera->eye + glm::vec3(i,j,k))==EMPTY)
-                    if(mpTerrain->getBlockAtEX(worldTarget)==EMPTY)
+                    if(mpTerrain->getBlockAtEX(worldTarget)==EMPTY&&mpTerrainWater->getBlockAtEX(worldTarget)==EMPTY)
                     {
                         continue;
                     }
@@ -526,34 +614,50 @@ void Player::deleteBlock()
     if(result)
     {
         mpTerrain->setBlockAtEX(minWorldTarget,EMPTY);
+        mpTerrainWater->setBlockAtEX(minWorldTarget,EMPTY);
         glm::ivec2 chunkXZ = mpTerrain->toChunkXZ(minWorldTarget);
         glm::ivec3 blockXYZ = mpTerrain->toBlockXYZ(minWorldTarget);
         if(blockXYZ.x==MaxX-1)
         {
             Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
             if(chunk!=nullptr) chunk->createEXX();
+
+            Chunk* chunkE = mpTerrainWater->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
+            if(chunkE!=nullptr) chunkE->createEXX();
         }
         if(blockXYZ.x==0)
         {
             Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
             if(chunk!=nullptr) chunk->createEXX();
+
+            Chunk* chunkE = mpTerrainWater->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
+            if(chunkE!=nullptr) chunkE->createEXX();
         }
         if(blockXYZ.z==MaxZ-1)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
+            Chunk* chunk = mpTerrainWater->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
             if(chunk!=nullptr) chunk->createEXX();
+
+            Chunk* chunkE = mpTerrainWater->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
+            if(chunkE!=nullptr) chunkE->createEXX();
         }
         if(blockXYZ.z==0)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
+            Chunk* chunk = mpTerrainWater->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
             if(chunk!=nullptr) chunk->createEXX();
+
+            Chunk* chunkE = mpTerrainWater->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
+            if(chunkE!=nullptr) chunkE->createEXX();
         }
         Chunk* chunk = mpTerrain->getChunkAtEX(minWorldTarget);
         if(chunk!=nullptr) chunk->createEXX();
+
+        Chunk* chunkE = mpTerrainWater->getChunkAtEX(minWorldTarget);//
+        if(chunkE!=nullptr) chunkE->createEXX();//
     }
 }
 
-void Player::addBlock()
+void Player::addBlock(Terrain* terrain)
 {
     glm::vec3 worldDir = glm::normalize(mpCamera->ref - mpCamera->eye);
     glm::vec3 worldOrigin = mpCamera->eye;
@@ -575,7 +679,7 @@ void Player::addBlock()
                 {
                     glm::vec3 worldTarget = mpCamera->eye + glm::vec3(i,j,k);
                     //if(mpTerrain->getBlockAtEX(mpCamera->eye + glm::vec3(i,j,k))==EMPTY)
-                    if(mpTerrain->getBlockAtEX(worldTarget)!=EMPTY)
+                    if(mpTerrain->getBlockAtEX(worldTarget)!=EMPTY || mpTerrainWater->getBlockAtEX(worldTarget)!=EMPTY)
                     {
                         continue;
                     }
@@ -604,31 +708,81 @@ void Player::addBlock()
 
     if(result)
     {
-        mpTerrain->setBlockAtEX(maxWorldTarget,STONE);
-        glm::ivec2 chunkXZ = mpTerrain->toChunkXZ(maxWorldTarget);
-        glm::ivec3 blockXYZ = mpTerrain->toBlockXYZ(maxWorldTarget);
+        //        mpTerrain->setBlockAtEX(maxWorldTarget,mAddType);
+        //        glm::ivec2 chunkXZ = mpTerrain->toChunkXZ(maxWorldTarget);
+        //        glm::ivec3 blockXYZ = mpTerrain->toBlockXYZ(maxWorldTarget);
+        //        if(blockXYZ.x==MaxX-1)
+        //        {
+        //            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
+        //            if(chunk!=nullptr) chunk->createEXX();
+        //        }
+        //        if(blockXYZ.x==0)
+        //        {
+        //            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
+        //            if(chunk!=nullptr) chunk->createEXX();
+        //        }
+        //        if(blockXYZ.z==MaxZ-1)
+        //        {
+        //            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
+        //            if(chunk!=nullptr) chunk->createEXX();
+        //        }
+        //        if(blockXYZ.z==0)
+        //        {
+        //            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
+        //            if(chunk!=nullptr) chunk->createEXX();
+        //        }
+        //        Chunk* chunk = mpTerrain->getChunkAtEX(maxWorldTarget);
+        //        if(chunk!=nullptr) chunk->createEXX();
+        terrain->setBlockAtEX(maxWorldTarget,mAddType);
+        glm::ivec2 chunkXZ = terrain->toChunkXZ(maxWorldTarget);
+        glm::ivec3 blockXYZ = terrain->toBlockXYZ(maxWorldTarget);
         if(blockXYZ.x==MaxX-1)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
+            Chunk* chunk = terrain->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
             if(chunk!=nullptr) chunk->createEXX();
+            if(terrain->mType==0)
+            {
+                Chunk* chunkE = terrain->mExtraTerrain->getChunkAt(chunkXZ.x+MaxX,chunkXZ.y);
+                if(chunkE!=nullptr) chunkE->createEXX();
+            }
         }
         if(blockXYZ.x==0)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
+            Chunk* chunk = terrain->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
             if(chunk!=nullptr) chunk->createEXX();
+            if(terrain->mType==0)
+            {
+                Chunk* chunkE = terrain->mExtraTerrain->getChunkAt(chunkXZ.x-MaxX,chunkXZ.y);
+                if(chunkE!=nullptr) chunkE->createEXX();
+            }
         }
         if(blockXYZ.z==MaxZ-1)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
+            Chunk* chunk = terrain->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
             if(chunk!=nullptr) chunk->createEXX();
+            if(terrain->mType==0)
+            {
+                Chunk* chunkE = terrain->mExtraTerrain->getChunkAt(chunkXZ.x,chunkXZ.y+MaxZ);
+                if(chunkE!=nullptr) chunkE->createEXX();
+            }
         }
         if(blockXYZ.z==0)
         {
-            Chunk* chunk = mpTerrain->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
+            Chunk* chunk = terrain->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
             if(chunk!=nullptr) chunk->createEXX();
+            if(terrain->mType==0)
+            {
+                Chunk* chunkE = terrain->mExtraTerrain->getChunkAt(chunkXZ.x,chunkXZ.y-MaxZ);
+                if(chunkE!=nullptr) chunkE->createEXX();
+            }
         }
-        Chunk* chunk = mpTerrain->getChunkAtEX(maxWorldTarget);
+        Chunk* chunk = terrain->getChunkAtEX(maxWorldTarget);
         if(chunk!=nullptr) chunk->createEXX();
+        if(terrain->mType==0)
+        {
+            Chunk* chunkE = terrain->mExtraTerrain->getChunkAtEX(maxWorldTarget);
+            if(chunkE!=nullptr) chunkE->createEXX();
+        }
     }
 }
 
@@ -769,4 +923,185 @@ int Player::collisionTerrainEX(glm::vec3 pos, glm::vec3 *newPos, bool *onGround)
     }
 
     return result;
+}
+
+bool Player::eyeInWater()
+{
+    if(mpTerrainWater!=nullptr&&mpTerrainWater->getBlockAtEX(mpCamera->eye)==WATER)
+        return true;
+    else
+        return false;
+}
+
+bool Player::bodyInWater()
+{
+    if(mpTerrainWater!=nullptr)
+    {
+        glm::vec3 offset[12] = { glm::vec3(0,0,0),
+                             glm::vec3(0.99,0,0),
+                             glm::vec3(0.99,0,0.99),
+                             glm::vec3(0,0,0.99),
+                             glm::vec3(0,0.99,0),
+                             glm::vec3(0.99,0.99,0),
+                             glm::vec3(0.99,0.99,0.99),
+                             glm::vec3(0,0.99,0.99),
+                             glm::vec3(0,1.99,0),
+                             glm::vec3(0.99,1.99,0),
+                             glm::vec3(0.99,1.99,0.99),
+                             glm::vec3(0,1.99,0.99) };
+
+        for(int i = 0;i<12;i++)
+        {
+            if(mpTerrainWater->getBlockAtEX(mPos+offset[i])==WATER)
+                return true;
+        }
+
+        return false;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+int Player::collisionTerrainWater(glm::vec3 pos, glm::vec3 newPos, bool *inWater)
+{
+    int result = 0;
+
+    if(mpTerrainWater!=nullptr)
+    {
+        glm::vec3 offset[12] = { glm::vec3(0,0,0),
+                                 glm::vec3(0.99,0,0),
+                                 glm::vec3(0.99,0,0.99),
+                                 glm::vec3(0,0,0.99),
+                                 glm::vec3(0,0.99,0),
+                                 glm::vec3(0.99,0.99,0),
+                                 glm::vec3(0.99,0.99,0.99),
+                                 glm::vec3(0,0.99,0.99),
+                                 glm::vec3(0,1.99,0),
+                                 glm::vec3(0.99,1.99,0),
+                                 glm::vec3(0.99,1.99,0.99),
+                                 glm::vec3(0,1.99,0.99) };
+
+        glm::vec3 worldDir = newPos - pos;
+        glm::vec3 r(1,1,1);
+        float minT = std::numeric_limits<float>::max();
+
+        for(int n = 0;n<12;n++)
+        {
+            glm::vec3 worldOrigin = pos + offset[n];
+            glm::vec3 worldDestination = newPos + offset[n];
+
+            glm::ivec3 posGrid = (glm::ivec3)glm::floor(worldOrigin);
+            glm::ivec3 newPosGrid = (glm::ivec3)glm::floor(worldDestination);
+
+            int xGridStart = posGrid.x <= newPosGrid.x ? posGrid.x : newPosGrid.x;
+            int yGridStart = posGrid.y <= newPosGrid.y ? posGrid.y : newPosGrid.y;
+            int zGridStart = posGrid.z <= newPosGrid.z ? posGrid.z : newPosGrid.z;
+            int xGridEnd = posGrid.x <= newPosGrid.x ? newPosGrid.x : posGrid.x;
+            int yGridEnd = posGrid.y <= newPosGrid.y ? newPosGrid.y : posGrid.y ;
+            int zGridEnd = posGrid.z <= newPosGrid.z ? newPosGrid.z : posGrid.z;
+
+            for(int i = xGridStart;i<=xGridEnd;i++)
+            {
+                for(int j = yGridStart;j<=yGridEnd;j++)
+                {
+                    for(int k = zGridStart;k<=zGridEnd;k++)
+                    {
+                        glm::vec3 worldToLocal = glm::vec3(i,j,k);
+                        glm::vec3 localOrigin = worldOrigin - worldToLocal;
+                        glm::vec3 localDir = worldDir;
+                        glm::vec3 p(0,0,0);
+                        float t = 0;
+
+                        if(mpTerrainWater->getBlockAt(i,j,k)==EMPTY)
+                        {
+                            continue;
+                        }
+
+                        int rayCubeResult = rayCube(r,localOrigin,localDir,&p,&t);
+                        if(rayCubeResult!=0)
+                        {
+                            if(t<minT)
+                            {
+                                minT = t;
+                                p = p+worldToLocal;
+                                result = rayCubeResult;
+                            }
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+        if(result!=0)
+        {
+            switch(result)
+            {
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+                *inWater = true;
+                break;
+            default:
+                break;
+            }
+        }
+
+
+    }
+
+    return result;
+}
+
+void Player::run()
+{
+    mpTerrain->createChunkEX(mTarget);
+    mpTerrainWater->createChunkWater(mTarget);
+    mpTerrain->mergeTerrain(mTarget);
+    mMulti = false;
+//    QThreadPool* threadPool = new QThreadPool();
+
+//    mpTerrain->mFunc = 1;
+//    mpTerrain->mTarget = mTarget;
+
+//    mpTerrainWater->mFunc = 2;
+//    mpTerrainWater->mTarget = mTarget;
+
+
+//    threadPool->start(mpTerrain);
+//    threadPool->start(mpTerrainWater);
+
+//    threadPool->waitForDone();
+
+//    printf("done1\n");
+
+//    mpTerrain->mergeTerrainEX(mTarget);
+
+//    printf("done2\n");
+
+//    mpTerrain->mFunc = 3;
+//    mpTerrain->mTarget = mTarget;
+
+//    mpTerrainWater->mFunc = 3;
+//    mpTerrainWater->mTarget = mTarget;
+
+//    threadPool->start(mpTerrain);
+//    threadPool->start(mpTerrainWater);
+
+//    threadPool->waitForDone();
+
+//    mpTerrain->bindChunk(mTarget);
+//    mpTerrain->bindAdjacentChunk(mTarget);
+//    mpTerrainWater->bindChunk(mTarget);
+//    mpTerrainWater->bindAdjacentChunk(mTarget);
+
+//    printf("done3\n");
+
+//    delete threadPool;
 }

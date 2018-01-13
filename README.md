@@ -1,5 +1,14 @@
 # MiniMineCraft
 This project is the final assignment of CIS-560 Computer Graphics(_it is still under progress_). The project is based on OpenGL and Qt. Some features like procedural terrain, collision detection, gravity and ray-casting were implemented.
+## Update_1 Shadow Mapping and Skybox
+Two new features added.
+### Shadow Mapping
+For shadow mapping, I used two path to achieve it. In the first path, I rendered the depth buffer from the light. In the second path, I rendered the world and tested the depth of each pixel against the previous value in the depth buffer. If the new pixel is farther than the old pixel from the perspective of the light source, then it is in the shadow hencen will be dimmed.
+![shadowmapping1](./img/mini_mc_shadow1.gif)
+![shadowmapping2](./img/mini_mc_shadow2.gif)
+### Skybox
+For the skybox part, I used the OpenGL cube map to achieve it.
+![skybox](./img/mini_mc_skybox.gif)
 ## General Movement and Procedural Terrain
 This part shows some general movements like walking and jumping. Notice when the character move off a stair, it automatically falls. Also it shows how the procedural terrain are generated. When the character approaches the border of the current "chunk", new "chunk" will be generated.
 ![general_movement_and_procedural_terrain](./img/mini_mc_move.gif)

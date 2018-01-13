@@ -16,7 +16,12 @@ SOURCES += \
     $$PWD/scene/terrain.cpp \
     $$PWD/scene/worldaxes.cpp \
     $$PWD/chunk.cpp \
-    $$PWD/player.cpp
+    $$PWD/player.cpp \
+    $$PWD/texture.cpp \
+    $$PWD/scene/lsystem.cpp \
+    $$PWD/scene/turtle.cpp \
+    $$PWD/scene/grid.cpp \
+    $$PWD/scene/screen.cpp
 
 HEADERS += \
     $$PWD/la.h \
@@ -33,4 +38,9 @@ HEADERS += \
     $$PWD/scene/terrain.h \
     $$PWD/scene/worldaxes.h \
     $$PWD/chunk.h \
-    $$PWD/player.h
+    $$PWD/player.h \
+    $$PWD/texture.h \
+    $$PWD/scene/lsystem.h \
+    $$PWD/scene/turtle.h \
+    $$PWD/scene/grid.h \
+    $$PWD/scene/screen.h

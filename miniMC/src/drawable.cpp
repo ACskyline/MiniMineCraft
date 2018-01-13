@@ -2,8 +2,9 @@
 #include <la.h>
 
 Drawable::Drawable(OpenGLContext* context)
-    : bufIdx(), bufPos(), bufNor(), bufCol(), bufCombine(),
-      idxBound(false), posBound(false), norBound(false), colBound(false), combineBound(false),
+    : bufIdx(), bufPos(), bufNor(), bufCol(), bufUV(), bufAnim(), bufCombine(),
+      idxBound(false), posBound(false), norBound(false), colBound(false),
+      uvBound(false), animBound(false), combineBound(false),
       context(context)
 {}
 
@@ -17,7 +18,16 @@ void Drawable::destroy()
     context->glDeleteBuffers(1, &bufPos);
     context->glDeleteBuffers(1, &bufNor);
     context->glDeleteBuffers(1, &bufCol);
+    context->glDeleteBuffers(1, &bufUV);
+    context->glDeleteBuffers(1, &bufAnim);
     context->glDeleteBuffers(1, &bufCombine);
+    idxBound = false;
+    posBound = false;
+    norBound = false;
+    colBound = false;
+    uvBound = false;
+    animBound = false;
+    combineBound = false;
 }
 
 GLenum Drawable::drawMode()
@@ -64,6 +74,19 @@ void Drawable::generateCol()
     context->glGenBuffers(1, &bufCol);
 }
 
+void Drawable::generateUV()
+{
+    uvBound = true;
+    // Create a VBO on our GPU and store its handle in bufCol
+    context->glGenBuffers(1, &bufUV);
+}
+
+void Drawable::generateAnim()
+{
+    animBound = true;
+    context->glGenBuffers(1, &bufAnim);
+}
+
 void Drawable::generateCombine()
 {
     combineBound = true;
@@ -100,6 +123,22 @@ bool Drawable::bindCol()
         context->glBindBuffer(GL_ARRAY_BUFFER, bufCol);
     }
     return colBound;
+}
+
+bool Drawable::bindUV()
+{
+    if(uvBound){
+        context->glBindBuffer(GL_ARRAY_BUFFER, bufUV);
+    }
+    return uvBound;
+}
+
+bool Drawable::bindAnim()
+{
+    if(animBound){
+        context->glBindBuffer(GL_ARRAY_BUFFER, bufAnim);
+    }
+    return animBound;
 }
 
 bool Drawable::bindCombine()
