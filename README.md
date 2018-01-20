@@ -1,6 +1,6 @@
 # MiniMineCraft
 This project is the final assignment of CIS-560 Computer Graphics(_it is still under progress_). The project is based on OpenGL and Qt. Some features like procedural terrain, collision detection, gravity and ray-casting were implemented.
-## Update_1 Shadow Mapping and Skybox
+## Update 1 Shadow Mapping and Skybox
 Two new features added.
 ### Shadow Mapping
 For shadow mapping, I used two path to achieve it. In the first path, I rendered the depth buffer from the light. In the second path, I rendered the world and tested the depth of each pixel against the previous value in the depth buffer. If the new pixel is farther than the old pixel from the perspective of the light source, then it is in the shadow hence will be dimmed.
